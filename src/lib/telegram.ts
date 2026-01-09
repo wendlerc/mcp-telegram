@@ -2,9 +2,15 @@ import { Api, TelegramClient } from 'telegram';
 import { StoreSession } from 'telegram/sessions/index.js';
 import { computeCheck } from 'telegram/Password.js'
 import { createInterface } from 'readline';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+
+// Get the directory where this script is located
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface TelegramSettings {
   apiId: string;
@@ -116,7 +122,9 @@ export async function createClient(
     telegramConfig = loadTelegramSettings();
   }
 
-  const session = new StoreSession(sessionName);
+  // Use absolute path for session storage (relative to this script's location)
+  const sessionPath = path.join(__dirname, '..', '..', sessionName);
+  const session = new StoreSession(sessionPath);
   cachedClient = new TelegramClient(
     session,
     parseInt(telegramConfig.apiId, 10),
