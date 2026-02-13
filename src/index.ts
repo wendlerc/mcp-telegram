@@ -7,12 +7,8 @@ import { createInterface } from 'readline';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
-import { createRequire } from 'module';
 import { Api } from 'telegram';
 import bigInt from 'big-integer';
-
-const require = createRequire(import.meta.url);
-const { NewMessage } = require('telegram/events');
 import { connectToTelegram, logoutFromTelegram, createClient } from './lib/index.js';
 import { logger } from './utils/logger.js';
 import { config } from './config.js';
@@ -158,40 +154,19 @@ program
     setInterval(fetchAndWrite, intervalMs);
   });
 
-// Command: agent-listener - runs in child process, writes messages to stdout as JSON lines
-program
-  .command('agent-listener')
-  .description('Telegram listener (internal - outputs JSON lines to stdout)')
-  .option('-d, --dialog <id>', 'Dialog/group ID', '-5150901335')
-  .action(async (options) => {
-    const dialogId = options.dialog;
-    const BOT_PREFIXES = ['Starting:', 'Done ✓', 'Yes —', 'New approach:', 'Update:'];
-    const isBotMessage = (text: string): boolean =>
-      BOT_PREFIXES.some((p) => text.startsWith(p));
-
-    const client = await createClient();
-    client.addEventHandler(
-      (event) => {
-        const id = event.message.id ?? 0;
-        const text = (event.message.message ?? '').trim();
-        if (id === 0 || !text || isBotMessage(text)) return;
-        process.stdout.write(JSON.stringify({ id, text }) + '\n');
-      },
-      new NewMessage({ chats: [bigInt(dialogId)] })
-    );
-  });
-
-// Command: agent - spawns listener child, reads messages, runs Cursor agent on each
+// Command: agent - fetch messages and run Cursor agent on each (single process, same path for all)
 program
   .command('agent')
-  .description('Listen for Vibe messages and run Cursor agent on each (push, no polling)')
+  .description('Fetch Vibe messages and run Cursor agent on each')
   .option('-d, --dialog <id>', 'Dialog/group ID', '-5150901335')
   .option('-w, --workspace <path>', 'Workspace for Cursor agent', process.cwd())
   .option('--chat-file <file>', 'File to persist shared chat ID', '.vibe-agent-chat')
+  .option('-i, --interval <seconds>', 'Fetch interval in seconds', '3')
   .action(async (options) => {
     const dialogId = options.dialog;
     const workspace = resolve(options.workspace);
     const chatFilePath = resolve(workspace, options.chatFile);
+    const intervalMs = parseInt(options.interval, 10) * 1000;
 
     const getOrCreateChatId = (): string => {
       if (existsSync(chatFilePath)) {
@@ -247,24 +222,43 @@ Instruction: ${instruction}`;
         proc.on('close', (code) => resolveExit(code ?? 0));
       });
 
-    const queue: string[] = [];
+    const client = await createClient();
+    const queue: { id: number; text: string }[] = [];
     const seenIds = new Set<number>();
+    let lastProcessedId = 0;
+    let initialized = false;
     let processing = false;
 
-    const addInstruction = (id: number, text: string) => {
-      if (seenIds.has(id) || !text || isBotMessage(text)) return;
-      seenIds.add(id);
-      queue.push(text);
-      processQueue();
+    const fetchAndEnqueue = async () => {
+      try {
+        const messages = await client.getMessages(bigInt(dialogId), { limit: 20 });
+        const raw = (messages || []).slice().reverse();
+        if (!initialized) {
+          lastProcessedId = Math.max(0, ...raw.map((m) => (m as { id?: number }).id ?? 0));
+          initialized = true;
+          return;
+        }
+        for (const msg of raw) {
+          const id = (msg as { id?: number }).id ?? 0;
+          const text = ((msg as { message?: string }).message ?? '').trim();
+          if (id <= lastProcessedId || seenIds.has(id) || !text || isBotMessage(text)) continue;
+          seenIds.add(id);
+          queue.push({ id, text });
+          processQueue();
+        }
+      } catch (err) {
+        console.error('Fetch error:', (err as Error).message);
+      }
     };
 
     const processQueue = () => {
       if (processing || queue.length === 0) return;
       processing = true;
-      const instruction = queue.shift()!;
-      console.log(`\n📩 Processing instruction: ${instruction.slice(0, 60)}${instruction.length > 60 ? '...' : ''}\n`);
-      runAgent(instruction)
+      const { id, text } = queue.shift()!;
+      console.log(`\n📩 Processing instruction: ${text.slice(0, 60)}${text.length > 60 ? '...' : ''}\n`);
+      runAgent(text)
         .then((code) => {
+          lastProcessedId = id;
           console.log(`\n✓ Agent finished (exit ${code})\n`);
           processing = false;
           processQueue();
@@ -276,37 +270,14 @@ Instruction: ${instruction}`;
         });
     };
 
-    const listener = spawn(process.execPath, [process.argv[1], 'agent-listener', '-d', dialogId], {
-      stdio: ['ignore', 'pipe', 'inherit'],
-      cwd: process.cwd(),
-      env: { ...process.env },
-    });
+    await fetchAndEnqueue();
+    setInterval(fetchAndEnqueue, intervalMs);
 
-    let buf = '';
-    listener.stdout?.on('data', (chunk: Buffer) => {
-      buf += chunk.toString();
-      const lines = buf.split('\n');
-      buf = lines.pop() ?? '';
-      for (const line of lines) {
-        try {
-          const { id, text } = JSON.parse(line) as { id: number; text: string };
-          addInstruction(id, text);
-        } catch {
-          // ignore parse errors
-        }
-      }
-    });
-
-    listener.on('exit', (code) => {
-      console.error(`Listener exited (${code})`);
-      process.exit(code ?? 1);
-    });
-
-    console.log(`Vibe → Cursor Agent (push only)`);
+    console.log(`Vibe → Cursor Agent`);
     console.log(`Dialog: ${dialogId}`);
     console.log(`Workspace: ${workspace}`);
     console.log(`Shared chat: ${chatId}`);
-    console.log(`Listening for messages... Press Ctrl+C to stop.\n`);
+    console.log(`Fetching every ${options.interval}s. Press Ctrl+C to stop.\n`);
   });
 
 // Command: create-group

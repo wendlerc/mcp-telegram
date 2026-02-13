@@ -47,8 +47,7 @@ node dist/index.js agent
 ```
 
 **How it works:**
-- Spawns a **listener child process** that connects to Telegram and receives push updates (no polling)
-- Listener writes each new message to stdout; parent reads and runs `cursor agent` on each
+- Fetches messages via `getMessages` every 3s (same API for every instruction)
 - Skips bot status messages (Starting:, Done ✓, etc.)
 - Uses `--resume` so all instructions share the same Cursor chat (context preserved)
 - Agent posts progress back to Vibe via the `sendMessage` MCP tool
@@ -56,6 +55,7 @@ node dist/index.js agent
 **Options:**
 - `-d, --dialog <id>` — Vibe group ID (default: -5150901335)
 - `-w, --workspace <path>` — Workspace for Cursor agent
+- `-i, --interval <seconds>` — Fetch interval (default: 3)
 - `--chat-file <file>` — File to persist shared Cursor chat ID (default: .vibe-agent-chat)
 
 **Requirements:** Cursor CLI (`cursor agent`) installed and authenticated.
