@@ -1,16 +1,11 @@
 import { Api, TelegramClient } from 'telegram';
+import { ConnectionTCPObfuscated } from 'telegram/network/index.js';
 import { StoreSession } from 'telegram/sessions/index.js';
 import { computeCheck } from 'telegram/Password.js'
 import { createInterface } from 'readline';
-import { fileURLToPath } from 'url';
-import path from 'path';
 
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
-
-// Get the directory where this script is located
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export interface TelegramSettings {
   apiId: string;
@@ -122,16 +117,16 @@ export async function createClient(
     telegramConfig = loadTelegramSettings();
   }
 
-  // Use absolute path for session storage (relative to this script's location)
-  const sessionPath = path.join(__dirname, '..', '..', sessionName);
-  const session = new StoreSession(sessionPath);
+  // StoreSession uses "./" + name - pass simple name so session is in project dir
+  const session = new StoreSession(sessionName);
   cachedClient = new TelegramClient(
     session,
     parseInt(telegramConfig.apiId, 10),
     telegramConfig.apiHash,
     {
       connectionRetries: 5,
-      // baseLogger: logger
+      connection: ConnectionTCPObfuscated,  // Port 443 - works when port 80 hangs
+      useWSS: true,
     }
   );
   await cachedClient.connect();
