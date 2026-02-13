@@ -50,8 +50,9 @@ export const listMessagesTool: Tool<undefined, typeof ListMessagesParamsSchema> 
       // logger.debug(`Retrieving up to ${limit} messages from dialog ${dialog.title}`);
       
       // Get messages
+      const limit = args.limit ?? 20;
       const messages = await client.getMessages(dialogId, {
-        limit: 10
+        limit
       });
       
       log.debug(`Retrieved ${messages.length} messages`);

@@ -1,42 +1,76 @@
 # MCP Telegram
 
-A TypeScript implementation of an MCP (Model Context Protocol) server for working with Telegram through MTProto, built using FastMCP.
+A TypeScript implementation of an MCP (Model Context Protocol) server for working with Telegram through MTProto, built using FastMCP. Includes a **Vibe → Cursor Agent** workflow that executes instructions from a Telegram group as headless Cursor agent tasks.
 
 ## Overview
 
-This project provides a set of tools for interacting with Telegram through the MTProto protocol, making them available via an MCP server for use with AI models like Claude.
+- **MCP tools** for Cursor: `listDialogs`, `listMessages`, `createGroup`, `sendMessage`
+- **Vibe resource**: MCP resource `vibe://messages` for loading Telegram instructions into context
+- **Vibe → Agent**: Push-based workflow that runs Cursor agent on each new message from a Telegram group
 
 ## Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Build the project
 npm run build
 ```
 
 ## Usage
 
-### CLI Commands
-
-The application provides the following CLI commands:
+### Sign in
 
 ```bash
-# Sign in to Telegram
-npm run sign-in
-# or
-npx mcp-telegram sign-in
+node dist/index.js sign-in
+```
 
-# Start the MCP server
-npm run mcp
-# or 
-npx mcp-telegram mcp [options]
+### Start MCP server (for Cursor)
 
-# Logout from Telegram
-npm run logout
-# or
-npx mcp-telegram logout
+Add to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "telegram": {
+      "command": "node",
+      "args": ["/path/to/mcp-telegram/dist/index.js", "mcp"]
+    }
+  }
+}
+```
+
+### Vibe → Cursor Agent (Push Workflow)
+
+Run a process that listens for new messages in your Vibe Telegram group and executes each as a Cursor agent task:
+
+```bash
+node dist/index.js agent
+```
+
+**How it works:**
+- Spawns a **listener child process** that connects to Telegram and receives push updates (no polling)
+- Listener writes each new message to stdout; parent reads and runs `cursor agent` on each
+- Skips bot status messages (Starting:, Done ✓, etc.)
+- Uses `--resume` so all instructions share the same Cursor chat (context preserved)
+- Agent posts progress back to Vibe via the `sendMessage` MCP tool
+
+**Options:**
+- `-d, --dialog <id>` — Vibe group ID (default: -5150901335)
+- `-w, --workspace <path>` — Workspace for Cursor agent
+- `--chat-file <file>` — File to persist shared Cursor chat ID (default: .vibe-agent-chat)
+
+**Requirements:** Cursor CLI (`cursor agent`) installed and authenticated.
+
+### Other CLI commands
+
+```bash
+# Poll Vibe to file (legacy)
+node dist/index.js poll -d -5150901335 -o .vibe-instructions.md
+
+# Create a new Telegram group
+node dist/index.js create-group "My Group"
+
+# Logout
+node dist/index.js logout
 ```
 
 CLI Options for the `mcp` command:
@@ -99,42 +133,57 @@ The server is implemented using FastMCP, which provides a modern TypeScript impl
 - **stdio**: Default transport, useful for direct integration with tools like Cursor AI
 - **sse**: Server-Sent Events transport for real-time communication
 
-## Available Tools
+## MCP Tools
 
 ### listDialogs
 
 List available dialogs, chats and channels.
 
-Parameters:
-- `unread`: Boolean, show only unread dialogs (default: false)
-- `archived`: Boolean, include archived dialogs (default: false)
-- `ignorePinned`: Boolean, ignore pinned dialogs (default: false)
+Parameters: `unread`, `archived`, `ignorePinned`
 
 ### listMessages
 
 List messages in a given dialog, chat or channel.
 
-Parameters:
-- `dialogId`: String, ID of the dialog to list messages from
-- `unread`: Boolean, show only unread messages (default: false)
-- `limit`: Number, maximum number of messages to retrieve (default: 100)
+Parameters: `dialogId`, `unread`, `limit` (default: 20)
+
+### createGroup
+
+Create a new Telegram supergroup.
+
+Parameters: `title`, `about`
+
+### sendMessage
+
+Send a message to a dialog/group.
+
+Parameters: `dialogId`, `message`
+
+## MCP Resource
+
+### Vibe Messages (`vibe://messages`)
+
+In Cursor, type `@` and add **Vibe Messages** to load the latest instructions from your Vibe Telegram group into context.
 
 ## Project Structure
 
 ```
 src/
 ├── config.ts               # Application configuration
-├── index.ts                # Main server implementation
-├── mcp.ts                  # CLI entry point
-├── tools/                  # Tool implementations
-│   ├── index.ts            # Tools export
-│   └── telegramTools.ts    # Telegram tools
-├── lib/           # Core Telegram functionality
-│   ├── index.ts            # Module exports
-│   ├── telegram.ts         # Telegram client functionality
-└── utils/                  # Utilities
-    ├── errorHandler.ts     # Error handling utilities
-    └── logger.ts           # Logging utility
+├── index.ts                # CLI entry point (sign-in, mcp, agent, poll, etc.)
+├── mcp.ts                  # MCP server setup (tools, Vibe resource)
+├── tools/                  # MCP tool implementations
+│   ├── index.ts
+│   ├── listDialogs.ts
+│   ├── listMessages.ts
+│   ├── createGroup.ts
+│   └── sendMessage.ts
+├── lib/                    # Core Telegram functionality
+│   ├── index.ts
+│   └── telegram.ts
+└── utils/
+    ├── errorHandler.ts
+    └── logger.ts
 ```
 
 ## License

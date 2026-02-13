@@ -23,6 +23,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "hello": "ts-node hello-world.ts",
     "inspect": "npx fastmcp inspect src/mcp.ts",
     "lint": "eslint src --ext .ts",
     "test": "jest"

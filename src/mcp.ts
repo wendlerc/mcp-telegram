@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
+import bigInt from 'big-integer';
 import { FastMCP } from 'fastmcp';
 
 import { config } from './config.js';
 import { tools } from './tools/index.js';
+import { createClient } from './lib/telegram.js';
 import { logger } from './utils/logger.js';
 import pkg from '../package.json' with { type: 'json' };
+
+const VIBE_DIALOG_ID = '-5150901335';
 
 /**
  * Create and configure the MCP server
@@ -15,6 +19,34 @@ export function createServer() {
   const server = new FastMCP({
     name: 'mcp-telegram',
     version: pkg.version as `${number}.${number}.${number}`,
+  });
+
+  // Register Vibe messages as an MCP resource - Cursor can add this to context
+  server.addResource({
+    uri: 'vibe://messages',
+    name: 'Vibe Messages',
+    mimeType: 'text/markdown',
+    description: 'Latest messages from the Vibe Telegram group - your instructions',
+    async load() {
+      const client = await createClient();
+      const messages = await client.getMessages(bigInt(VIBE_DIALOG_ID), { limit: 20 });
+      const lines: string[] = ['# Instructions from Vibe', '', `*Fetched: ${new Date().toISOString()}*`, '', '---', ''];
+      for (const msg of (messages || []).reverse()) {
+        const text = (msg as { message?: string }).message ?? '';
+        if (text) {
+          const date = (msg as { date?: number }).date
+            ? new Date((msg as { date: number }).date * 1000).toLocaleString()
+            : '';
+          lines.push(`**${date}**`);
+          lines.push('');
+          lines.push(text);
+          lines.push('');
+          lines.push('---');
+          lines.push('');
+        }
+      }
+      return { text: lines.join('\n') };
+    },
   });
 
   // Register all tools with FastMCP

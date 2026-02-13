@@ -1,0 +1,3 @@
+To get the user's Telegram messages from Vibe into the chat: they should add the "Vibe Messages" resource. In Cursor, type @ and look for "Vibe Messages" (from the telegram MCP server) — adding it fetches the latest messages into context.
+
+When working on tasks (especially from Vibe instructions), send progress updates to the Vibe group using the sendMessage tool (dialogId: -5150901335). Post when you start, when you hit milestones, and when you complete. This keeps the user informed in Telegram.

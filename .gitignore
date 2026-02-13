@@ -25,3 +25,10 @@ Thumbs.db
 
 *.session
 mcp_telegram_session
+.vibe-instructions.md
+.vibe-agent-state
+.vibe-agent-chat
+hello.py
+hello.sh
+hello-world.ts
+index.html
