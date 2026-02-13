@@ -183,20 +183,19 @@ program
 
     const chatId = getOrCreateChatId();
 
-    const BOT_PREFIXES = ['Starting:', 'Done ✓', 'Yes —', 'New approach:', 'Update:'];
+    const BOT_PREFIX = '[bot]';
     const isBotMessage = (text: string): boolean =>
-      BOT_PREFIXES.some((p) => text.startsWith(p));
+      text.startsWith(BOT_PREFIX) ||
+      ['Starting:', 'Done ✓', 'Yes —', 'New approach:', 'Update:'].some((p) => text.startsWith(p));
 
     const runAgent = (instruction: string): Promise<number> =>
       new Promise((resolveExit) => {
         const statusReminder = `
 
 ---
-IMPORTANT: You MUST report status back to the Vibe Telegram chat. Use the sendMessage tool with dialogId ${dialogId} to post:
-- When you start the task
-- When you hit milestones
-- When you complete (or if you encounter errors)
-Do not skip these updates.`;
+IMPORTANT: You MUST report status back to the Vibe Telegram chat. Use the sendMessage tool with dialogId ${dialogId}.
+CRITICAL: Prefix EVERY message you send with "${BOT_PREFIX}" (e.g. "${BOT_PREFIX} Starting..."). This prevents your updates from being processed as new tasks.
+Post updates: when you start, at milestones, and when you complete (or on errors).`;
         const prompt = `Execute this instruction from Vibe.${statusReminder}
 
 Instruction: ${instruction}`;
@@ -243,6 +242,7 @@ Instruction: ${instruction}`;
           const text = ((msg as { message?: string }).message ?? '').trim();
           if (id <= lastProcessedId || seenIds.has(id) || !text || isBotMessage(text)) continue;
           seenIds.add(id);
+          lastProcessedId = Math.max(lastProcessedId, id);
           queue.push({ id, text });
           processQueue();
         }
@@ -258,7 +258,6 @@ Instruction: ${instruction}`;
       console.log(`\n📩 Processing instruction: ${text.slice(0, 60)}${text.length > 60 ? '...' : ''}\n`);
       runAgent(text)
         .then((code) => {
-          lastProcessedId = id;
           console.log(`\n✓ Agent finished (exit ${code})\n`);
           processing = false;
           processQueue();

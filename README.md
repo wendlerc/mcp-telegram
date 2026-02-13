@@ -15,6 +15,8 @@ npm install
 npm run build
 ```
 
+Create a `.env` file with `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` (from [my.telegram.org](https://my.telegram.org)), then run `node dist/index.js sign-in` to authenticate.
+
 ## Usage
 
 ### Sign in
@@ -48,9 +50,11 @@ node dist/index.js agent
 
 **How it works:**
 - Fetches messages via `getMessages` every 3s (same API for every instruction)
-- Skips bot status messages (Starting:, Done ✓, etc.)
+- Skips bot status messages (see caveat below)
 - Uses `--resume` so all instructions share the same Cursor chat (context preserved)
 - Agent posts progress back to Vibe via the `sendMessage` MCP tool
+
+**Caveat — `[bot]` prefix required:** The agent must prefix every status message it sends to Vibe with `[bot]` (e.g. `[bot] Starting...`, `[bot] Done ✓`). Otherwise those messages will be fetched and processed as new tasks. The agent prompt and `.cursorrules` enforce this; ensure both are in place.
 
 **Options:**
 - `-d, --dialog <id>` — Vibe group ID (default: -5150901335)
@@ -158,6 +162,8 @@ Parameters: `title`, `about`
 Send a message to a dialog/group.
 
 Parameters: `dialogId`, `message`
+
+**Vibe workflow:** When sending to the Vibe group (used by the agent), prefix status updates with `[bot]` so they are not processed as new tasks.
 
 ## MCP Resource
 

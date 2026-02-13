@@ -30,6 +30,10 @@
 
 4. **Save** and **restart Cursor** (or reload the window: `⌘ + Shift + P` → "Developer: Reload Window")
 
+## Vibe Workflow Caveat
+
+When using the Vibe → Agent workflow (`node dist/index.js agent`), the agent posts status updates to Vibe. **Those messages must be prefixed with `[bot]`** (e.g. `[bot] Starting...`) or they will be picked up as new instructions. The project's `.cursorrules` and agent prompt enforce this.
+
 ## Verify
 
 Ask in chat:
