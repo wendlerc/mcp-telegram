@@ -111,11 +111,13 @@ screen -r cursor-agent
 
 After `agent mcp enable telegram`, the agent can use the **send_message** MCP tool. Use entity set to your Vibe group ID (e.g. `-5150901335`) and message prefixed with `[bot]`. The agent prompt instructs it to send summaries, lists, and findings this way.
 
+**Sending files:** Use the **send_file** MCP tool (not `send_message` with `file_path`). Cursor may serialize `file_path` incorrectly for `send_message`. `send_file` accepts `entity`, `file_path` (str), and optional `message`. Restart MCP/Cursor after package updates to pick up new tools.
+
 **Important:** `agent_vibe.py` disconnects from Telegram before running the agent so the MCP server can use the session. Start/Done status is sent by reconnecting briefly.
 
 ## Summary
 
-- **Telegram MCP**: Tools in Cursor (send_message, list dialogs, etc.)
+- **Telegram MCP**: Tools in Cursor (send_message, send_file, list dialogs, etc.)
 - **Vibe→Agent**: `agent_vibe.py` polls a Telegram group and runs Cursor agent on each message
-- **Results**: Agent uses send_message MCP tool (run `agent mcp enable telegram` first)
+- **Results**: Agent uses send_message (text) and send_file (files) MCP tools (run `agent mcp enable telegram` first)
 - **Session**: agent_vibe.py connects only to fetch/send, then disconnects so the MCP can use the session

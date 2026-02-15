@@ -79,9 +79,15 @@ node dist/index.js create-group "My Group"
 node dist/index.js logout
 ```
 
-### Send video/file (Python, workaround)
+### Sending files (Python setup)
 
-When the MCP `send_message` file upload fails or the agent can't send files, use:
+**MCP `send_file` tool:** Use this when `send_message` with `file_path` fails (Cursor may serialize `file_path` incorrectly). The `send_file` tool accepts a single path string and works reliably:
+
+- **Parameters:** `entity` (chat ID), `file_path` (absolute path), `message` (optional caption)
+- **Example:** `send_file(entity="-5150901335", file_path="/path/to/video.mp4", message="[bot] Caption")`
+- **Note:** Restart the MCP server (or Cursor) after package updates to pick up the `send_file` tool.
+
+**CLI fallback (`send_video.py`):** When the agent is stopped and you need to send a file without MCP:
 
 ```bash
 cd mcp-telegram
