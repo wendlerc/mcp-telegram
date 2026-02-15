@@ -117,19 +117,27 @@ async def main():
         api_hash=os.environ.get("TELEGRAM_API_HASH") or os.environ.get("API_HASH"),
     )
 
+    tg_lock = asyncio.Lock()  # Serialize Telegram ops to avoid CancelledError races
+
     async def connect_fetch_disconnect():
-        await tg.client.connect()
-        if not await tg.client.is_user_authorized():
-            raise RuntimeError("Not logged in. Run: uv run python login_local.py")
-        entity = int(args.dialog) if args.dialog.lstrip("-").isdigit() else args.dialog
-        result = await tg.get_messages(entity, limit=20)
-        await tg.client.disconnect()
-        return entity, result
+        async with tg_lock:
+            await tg.client.connect()
+            if not await tg.client.is_user_authorized():
+                raise RuntimeError("Not logged in. Run: uv run python login_local.py")
+            entity = int(args.dialog) if args.dialog.lstrip("-").isdigit() else args.dialog
+            try:
+                result = await tg.get_messages(entity, limit=20)
+            finally:
+                await tg.client.disconnect()
+            return entity, result
 
     async def connect_send_disconnect(entity, msg):
-        await tg.client.connect()
-        await tg.send_message(entity, msg)
-        await tg.client.disconnect()
+        async with tg_lock:
+            await tg.client.connect()
+            try:
+                await tg.send_message(entity, msg)
+            finally:
+                await tg.client.disconnect()
 
     queue: list[tuple[int, str]] = []
     seen_ids: set[int] = set()
@@ -156,6 +164,8 @@ async def main():
                 last_processed_id = max(last_processed_id, msg.message_id)
                 queue.append((msg.message_id, text))
                 asyncio.create_task(process_queue())
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             print(f"Fetch error: {e}", file=sys.stderr)
 
