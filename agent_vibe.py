@@ -54,24 +54,55 @@ def get_or_create_chat_id(workspace: Path, chat_file: str) -> str:
     return chat_id
 
 
-def run_agent(instruction: str, workspace: Path, chat_id: str, dialog_id: str) -> int:
-    prompt = f"Execute this instruction from Vibe.\n\nInstruction: {instruction}"
+VIBE_SEND = "[VIBE_SEND]"
 
-    proc = subprocess.run(
-        [
-            "cursor", "agent",
-            "--model", "composer-1.5",
-            "--print",
-            "--approve-mcps",
-            "--force",
-            "--sandbox", "disabled",
-            "--workspace", str(workspace),
-            "--resume", chat_id,
-            prompt,
-        ],
+
+async def run_agent(
+    instruction: str,
+    workspace: Path,
+    chat_id: str,
+    dialog_id: str,
+    tg,
+    entity,
+) -> int:
+    prompt = f"""Execute this instruction from Vibe.
+
+To send any result or message to the Vibe Telegram chat, run:
+  echo '[VIBE_SEND] your message here'
+
+Example: echo '[VIBE_SEND] Folders: toy-wm-private, mcp-telegram'
+Send summaries, lists, findings, and completion notes this way — not just at the end.
+
+Instruction: {instruction}"""
+
+    proc = await asyncio.create_subprocess_exec(
+        "cursor", "agent",
+        "--model", "composer-1.5",
+        "--print",
+        "--approve-mcps",
+        "--force",
+        "--sandbox", "disabled",
+        "--workspace", str(workspace),
+        "--resume", chat_id,
+        prompt,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
         cwd=workspace,
         env=env,
     )
+    assert proc.stdout is not None
+    async for line in proc.stdout:
+        text = line.decode(errors="replace").rstrip()
+        print(text)
+        if VIBE_SEND in text:
+            idx = text.find(VIBE_SEND)
+            msg = text[idx + len(VIBE_SEND):].strip()
+            if msg:
+                try:
+                    await tg.send_message(entity, f"{BOT_PREFIX} {msg}")
+                except Exception as e:
+                    print(f"Vibe send error: {e}", file=sys.stderr)
+    await proc.wait()
     return proc.returncode or 0
 
 
@@ -138,7 +169,7 @@ async def main():
         print(f"\n📩 Processing instruction: {text[:60]}{'...' if len(text) > 60 else ''}\n")
         try:
             await tg.send_message(entity, f"{BOT_PREFIX} Starting...")
-            code = await asyncio.to_thread(run_agent, text, workspace, chat_id, args.dialog)
+            code = await run_agent(text, workspace, chat_id, args.dialog, tg, entity)
             status = f"{BOT_PREFIX} Done ✓" if code == 0 else f"{BOT_PREFIX} Error (exit {code})"
             await tg.send_message(entity, status)
             print(f"\n✓ Agent finished (exit {code})\n")

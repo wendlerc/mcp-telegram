@@ -87,13 +87,6 @@ screen -r cursor-agent
 
 **Stop the agent:** Attach to screen, then `Ctrl+C`
 
-## Status updates
-
-The headless agent does **not** have access to the Telegram MCP. `agent_vibe.py` sends status updates directly to the Vibe chat using the same session:
-- `[bot] Starting...` when a task begins
-- `[bot] Done ✓` when it completes successfully
-- `[bot] Error (exit N)` or `[bot] Error: ...` on failure
-
 ## Getting your group ID
 
 - **MCP**: Ask Cursor to search your dialogs (e.g. "search my Telegram dialogs for X")
@@ -101,9 +94,24 @@ The headless agent does **not** have access to the Telegram MCP. `agent_vibe.py`
 - **Create group**: `uv run mcp-telegram create-group "My Vibe Group"` — ID is printed
 - **Bots**: Add [@userinfobot](https://t.me/userinfobot) to the group; it replies with the group ID
 
+## Sending results to Telegram (VIBE_SEND)
+
+The headless agent cannot use MCP tools. To send results, summaries, or any message to the Vibe chat, the agent runs:
+
+```bash
+echo '[VIBE_SEND] your message here'
+```
+
+`agent_vibe.py` watches the agent's output and forwards lines containing `[VIBE_SEND]` to Telegram. Examples:
+- `echo '[VIBE_SEND] Folders: toy-wm-private, mcp-telegram'`
+- `echo '[VIBE_SEND] Found 3 issues in src/utils.py'`
+- `echo '[VIBE_SEND] Done. Summary: ...'`
+
+The agent prompt instructs it to use this for results and findings.
+
 ## Summary
 
 - **Telegram MCP**: Tools in Cursor (send_message, list dialogs, etc.)
 - **Vibe→Agent**: `agent_vibe.py` polls a Telegram group and runs Cursor agent on each message
-- **Status updates**: Sent by `agent_vibe.py` itself (not the agent) — no MCP needed
+- **Status**: `[bot] Starting...` / `[bot] Done ✓` sent automatically; use `echo '[VIBE_SEND] msg'` for results
 - **Workspace**: `/share/datasets/home/wendler/code`
