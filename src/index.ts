@@ -332,6 +332,26 @@ program
     }
   });
 
+// Command: send
+program
+  .command('send')
+  .description('Send a message to a Telegram group or chat')
+  .requiredOption('-d, --dialog <id>', 'Dialog/group ID')
+  .requiredOption('-m, --message <text>', 'Message text to send')
+  .action(async (options) => {
+    try {
+      const client = await createClient();
+      const entity = bigInt(options.dialog);
+      await client.sendMessage(entity, { message: options.message });
+      console.log('✓ Message sent');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Failed to send message:', error);
+      console.error('Error:', (error as Error).message);
+      process.exit(1);
+    }
+  });
+
 // Default command - display help
 program
   .action(() => {

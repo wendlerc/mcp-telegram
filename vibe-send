@@ -1,0 +1,9 @@
+#!/bin/bash
+# Append message to .vibe-send-queue for agent_vibe.py to forward to Telegram.
+# Usage: vibe-send "your message"   or   echo "msg" | vibe-send
+QUEUE="${VIBE_SEND_QUEUE:-.vibe-send-queue}"
+if [[ -n "$1" ]]; then
+  echo "$*" >> "$QUEUE"
+else
+  cat >> "$QUEUE"
+fi

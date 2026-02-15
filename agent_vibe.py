@@ -18,6 +18,13 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent
 os.environ["XDG_STATE_HOME"] = str(PROJECT_DIR / ".session-state")
 
+# Use datasets for temp (avoid /tmp when root is full)
+TMP_BASE = Path("/share/datasets/home/wendler/code/tmp")
+TMP_BASE.mkdir(parents=True, exist_ok=True)
+os.environ["TMPDIR"] = str(TMP_BASE)
+os.environ["TEMP"] = str(TMP_BASE)
+os.environ["TMP"] = str(TMP_BASE)
+
 from dotenv import load_dotenv
 load_dotenv(PROJECT_DIR / ".env")
 

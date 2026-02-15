@@ -79,6 +79,17 @@ node dist/index.js create-group "My Group"
 node dist/index.js logout
 ```
 
+### Send video/file (Python, workaround)
+
+When the MCP `send_message` file upload fails or the agent can't send files, use:
+
+```bash
+cd mcp-telegram
+uv run python send_video.py /path/to/video.mp4 "[bot] Optional caption"
+```
+
+Stop the agent first if you get "database is locked" (session contention).
+
 CLI Options for the `mcp` command:
 - `-t, --transport <type>`: Transport type (stdio, sse), defaults to 'stdio'
 - `-p, --port <number>`: Port for HTTP/SSE transport, defaults to 3000

@@ -26,6 +26,7 @@ Thumbs.db
 *.session
 mcp_telegram_session
 .session-state/
+tmp/
 .vibe-instructions.md
 .vibe-agent-state
 .vibe-agent-chat

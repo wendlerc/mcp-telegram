@@ -68,7 +68,10 @@ Add to Cursor → Settings → MCP → Edit Config. **Important:** `XDG_STATE_HO
       "env": {
         "API_ID": "34785037",
         "API_HASH": "83d6e4eaef935264ea9f3c0599d254bf",
-        "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state"
+        "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state",
+        "TMPDIR": "/share/datasets/home/wendler/code/tmp",
+        "TEMP": "/share/datasets/home/wendler/code/tmp",
+        "TMP": "/share/datasets/home/wendler/code/tmp"
       }
     }
   }
