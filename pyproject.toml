@@ -1,0 +1,9 @@
+[project]
+name = "mcp-telegram-env"
+version = "0.1.0"
+description = "MCP Telegram server (Python) - uv environment"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp-telegram>=0.1.11",
+]
+
