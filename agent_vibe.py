@@ -4,6 +4,10 @@ Vibe → Cursor Agent: Poll a Telegram group for messages and run Cursor agent o
 Uses the agent CLI (cursor/agent) and Python mcp-telegram session.
 """
 import argparse
+import logging
+
+# Quiet Telethon connection spam (Connecting to... Disconnecting from...)
+logging.getLogger("telethon").setLevel(logging.WARNING)
 import asyncio
 import os
 import subprocess
@@ -54,24 +58,21 @@ def get_or_create_chat_id(workspace: Path, chat_file: str) -> str:
     return chat_id
 
 
-VIBE_SEND = "[VIBE_SEND]"
-
-
 async def run_agent(
     instruction: str,
     workspace: Path,
     chat_id: str,
     dialog_id: str,
-    tg,
-    entity,
 ) -> int:
+    """Run agent. Telegram client must be DISCONNECTED so the MCP server can use the session."""
     prompt = f"""Execute this instruction from Vibe.
 
-To send any result or message to the Vibe Telegram chat, run:
-  echo '[VIBE_SEND] your message here'
+To send any result or message to the Vibe Telegram chat, use the send_message MCP tool with:
+  entity: "{dialog_id}"
+  message: "[bot] your message here"
 
-Example: echo '[VIBE_SEND] Folders: toy-wm-private, mcp-telegram'
-Send summaries, lists, findings, and completion notes this way — not just at the end.
+Prefix every message with "[bot]" so updates are not processed as new tasks.
+Send summaries, lists, findings, and completion notes — not just at the end.
 
 Instruction: {instruction}"""
 
@@ -92,16 +93,7 @@ Instruction: {instruction}"""
     )
     assert proc.stdout is not None
     async for line in proc.stdout:
-        text = line.decode(errors="replace").rstrip()
-        print(text)
-        if VIBE_SEND in text:
-            idx = text.find(VIBE_SEND)
-            msg = text[idx + len(VIBE_SEND):].strip()
-            if msg:
-                try:
-                    await tg.send_message(entity, f"{BOT_PREFIX} {msg}")
-                except Exception as e:
-                    print(f"Vibe send error: {e}", file=sys.stderr)
+        print(line.decode(errors="replace").rstrip())
     await proc.wait()
     return proc.returncode or 0
 
@@ -124,10 +116,20 @@ async def main():
         api_id=os.environ.get("TELEGRAM_API_ID") or os.environ.get("API_ID"),
         api_hash=os.environ.get("TELEGRAM_API_HASH") or os.environ.get("API_HASH"),
     )
-    await tg.client.connect()
-    if not await tg.client.is_user_authorized():
-        print("Not logged in. Run: uv run python login_local.py", file=sys.stderr)
-        sys.exit(1)
+
+    async def connect_fetch_disconnect():
+        await tg.client.connect()
+        if not await tg.client.is_user_authorized():
+            raise RuntimeError("Not logged in. Run: uv run python login_local.py")
+        entity = int(args.dialog) if args.dialog.lstrip("-").isdigit() else args.dialog
+        result = await tg.get_messages(entity, limit=20)
+        await tg.client.disconnect()
+        return entity, result
+
+    async def connect_send_disconnect(entity, msg):
+        await tg.client.connect()
+        await tg.send_message(entity, msg)
+        await tg.client.disconnect()
 
     queue: list[tuple[int, str]] = []
     seen_ids: set[int] = set()
@@ -138,8 +140,7 @@ async def main():
     async def fetch_and_enqueue():
         nonlocal last_processed_id, initialized
         try:
-            entity = int(args.dialog) if args.dialog.lstrip("-").isdigit() else args.dialog
-            result = await tg.get_messages(entity, limit=20)
+            entity, result = await connect_fetch_disconnect()
             raw = list(reversed(result.messages)) if result.messages else []
             if not initialized:
                 last_processed_id = max(0, *(m.message_id for m in raw)) if raw else 0
@@ -168,13 +169,13 @@ async def main():
         msg_id, text = queue.pop(0)
         print(f"\n📩 Processing instruction: {text[:60]}{'...' if len(text) > 60 else ''}\n")
         try:
-            await tg.send_message(entity, f"{BOT_PREFIX} Starting...")
-            code = await run_agent(text, workspace, chat_id, args.dialog, tg, entity)
+            await connect_send_disconnect(entity, f"{BOT_PREFIX} Starting...")
+            code = await run_agent(text, workspace, chat_id, args.dialog)
             status = f"{BOT_PREFIX} Done ✓" if code == 0 else f"{BOT_PREFIX} Error (exit {code})"
-            await tg.send_message(entity, status)
+            await connect_send_disconnect(entity, status)
             print(f"\n✓ Agent finished (exit {code})\n")
         except Exception as e:
-            await tg.send_message(entity, f"{BOT_PREFIX} Error: {e}")
+            await connect_send_disconnect(entity, f"{BOT_PREFIX} Error: {e}")
             print(f"Error: {e}", file=sys.stderr)
         finally:
             processing = False

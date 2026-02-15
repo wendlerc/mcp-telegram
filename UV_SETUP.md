@@ -45,6 +45,16 @@ agent login
 
 Follow the prompts (browser or token). Run `agent status` to verify.
 
+## 4b. Enable Telegram MCP for agent (one-time)
+
+The agent needs the Telegram MCP approved to use send_message:
+
+```bash
+agent mcp enable telegram
+```
+
+This lets the agent send results to the Vibe chat via the MCP tool.
+
 ## 5. Cursor MCP config
 
 Add to Cursor → Settings → MCP → Edit Config. **Important:** `XDG_STATE_HOME` must point to the project session dir so the server finds your login:
@@ -94,24 +104,15 @@ screen -r cursor-agent
 - **Create group**: `uv run mcp-telegram create-group "My Vibe Group"` — ID is printed
 - **Bots**: Add [@userinfobot](https://t.me/userinfobot) to the group; it replies with the group ID
 
-## Sending results to Telegram (VIBE_SEND)
+## Sending results to Telegram (MCP)
 
-The headless agent cannot use MCP tools. To send results, summaries, or any message to the Vibe chat, the agent runs:
+After `agent mcp enable telegram`, the agent can use the **send_message** MCP tool. Use entity set to your Vibe group ID (e.g. `-5150901335`) and message prefixed with `[bot]`. The agent prompt instructs it to send summaries, lists, and findings this way.
 
-```bash
-echo '[VIBE_SEND] your message here'
-```
-
-`agent_vibe.py` watches the agent's output and forwards lines containing `[VIBE_SEND]` to Telegram. Examples:
-- `echo '[VIBE_SEND] Folders: toy-wm-private, mcp-telegram'`
-- `echo '[VIBE_SEND] Found 3 issues in src/utils.py'`
-- `echo '[VIBE_SEND] Done. Summary: ...'`
-
-The agent prompt instructs it to use this for results and findings.
+**Important:** `agent_vibe.py` disconnects from Telegram before running the agent so the MCP server can use the session. Start/Done status is sent by reconnecting briefly.
 
 ## Summary
 
 - **Telegram MCP**: Tools in Cursor (send_message, list dialogs, etc.)
 - **Vibe→Agent**: `agent_vibe.py` polls a Telegram group and runs Cursor agent on each message
-- **Status**: `[bot] Starting...` / `[bot] Done ✓` sent automatically; use `echo '[VIBE_SEND] msg'` for results
-- **Workspace**: `/share/datasets/home/wendler/code`
+- **Results**: Agent uses send_message MCP tool (run `agent mcp enable telegram` first)
+- **Session**: agent_vibe.py connects only to fetch/send, then disconnects so the MCP can use the session

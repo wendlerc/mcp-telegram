@@ -29,6 +29,7 @@ mcp_telegram_session
 .vibe-instructions.md
 .vibe-agent-state
 .vibe-agent-chat
+.vibe-send-queue
 hello.py
 hello.sh
 hello-world.ts
