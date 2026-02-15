@@ -2,6 +2,8 @@
 
 A TypeScript implementation of an MCP (Model Context Protocol) server for working with Telegram through MTProto, built using FastMCP. Includes a **Vibe → Cursor Agent** workflow that executes instructions from a Telegram group as headless Cursor agent tasks.
 
+**Python/uv setup:** If you don't have Node.js, see [UV_SETUP.md](UV_SETUP.md) for a Python-based setup using `uv` (no Node required).
+
 ## Overview
 
 - **MCP tools** for Cursor: `listDialogs`, `listMessages`, `createGroup`, `sendMessage`

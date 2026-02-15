@@ -55,14 +55,7 @@ def get_or_create_chat_id(workspace: Path, chat_file: str) -> str:
 
 
 def run_agent(instruction: str, workspace: Path, chat_id: str, dialog_id: str) -> int:
-    status_reminder = f"""
-
----
-IMPORTANT: You MUST report status back to the Vibe Telegram chat. Call the send_message tool with entity="{dialog_id}" and message="[bot] your status here".
-The tool uses "entity" (not dialogId) and "message" as parameter names.
-CRITICAL: Prefix EVERY message with "{BOT_PREFIX}" (e.g. "{BOT_PREFIX} Starting..."). This prevents your updates from being processed as new tasks.
-Post updates: when you start, at milestones, and when you complete (or on errors)."""
-    prompt = f"Execute this instruction from Vibe.{status_reminder}\n\nInstruction: {instruction}"
+    prompt = f"Execute this instruction from Vibe.\n\nInstruction: {instruction}"
 
     proc = subprocess.run(
         [
@@ -130,11 +123,13 @@ async def main():
                 seen_ids.add(msg.message_id)
                 last_processed_id = max(last_processed_id, msg.message_id)
                 queue.append((msg.message_id, text))
-                process_queue()
+                asyncio.create_task(process_queue())
         except Exception as e:
             print(f"Fetch error: {e}", file=sys.stderr)
 
-    def process_queue():
+    entity = int(args.dialog) if args.dialog.lstrip("-").isdigit() else args.dialog
+
+    async def process_queue():
         nonlocal processing
         if processing or not queue:
             return
@@ -142,14 +137,18 @@ async def main():
         msg_id, text = queue.pop(0)
         print(f"\n📩 Processing instruction: {text[:60]}{'...' if len(text) > 60 else ''}\n")
         try:
-            code = run_agent(text, workspace, chat_id, args.dialog)
+            await tg.send_message(entity, f"{BOT_PREFIX} Starting...")
+            code = await asyncio.to_thread(run_agent, text, workspace, chat_id, args.dialog)
+            status = f"{BOT_PREFIX} Done ✓" if code == 0 else f"{BOT_PREFIX} Error (exit {code})"
+            await tg.send_message(entity, status)
             print(f"\n✓ Agent finished (exit {code})\n")
         except Exception as e:
+            await tg.send_message(entity, f"{BOT_PREFIX} Error: {e}")
             print(f"Error: {e}", file=sys.stderr)
         finally:
             processing = False
             if queue:
-                process_queue()
+                asyncio.create_task(process_queue())
 
     await fetch_and_enqueue()
 
