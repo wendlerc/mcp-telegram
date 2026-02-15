@@ -58,8 +58,9 @@ def run_agent(instruction: str, workspace: Path, chat_id: str, dialog_id: str) -
     status_reminder = f"""
 
 ---
-IMPORTANT: You MUST report status back to the Vibe Telegram chat. Use the sendMessage tool with dialogId {dialog_id}.
-CRITICAL: Prefix EVERY message you send with "{BOT_PREFIX}" (e.g. "{BOT_PREFIX} Starting..."). This prevents your updates from being processed as new tasks.
+IMPORTANT: You MUST report status back to the Vibe Telegram chat. Call the send_message tool with entity="{dialog_id}" and message="[bot] your status here".
+The tool uses "entity" (not dialogId) and "message" as parameter names.
+CRITICAL: Prefix EVERY message with "{BOT_PREFIX}" (e.g. "{BOT_PREFIX} Starting..."). This prevents your updates from being processed as new tasks.
 Post updates: when you start, at milestones, and when you complete (or on errors)."""
     prompt = f"Execute this instruction from Vibe.{status_reminder}\n\nInstruction: {instruction}"
 
@@ -86,7 +87,7 @@ async def main():
     parser.add_argument("-d", "--dialog", default="-5150901335", help="Vibe group ID")
     parser.add_argument("-w", "--workspace", default="/share/datasets/home/wendler/code", help="Workspace for agent")
     parser.add_argument("--chat-file", default=".vibe-agent-chat", help="File to persist chat ID")
-    parser.add_argument("-i", "--interval", type=int, default=3, help="Poll interval (seconds)")
+    parser.add_argument("-i", "--interval", type=int, default=1, help="Poll interval (seconds)")
     args = parser.parse_args()
 
     workspace = Path(args.workspace).resolve()
