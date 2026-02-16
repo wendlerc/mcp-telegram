@@ -73,7 +73,7 @@ async def run_agent(
     dialog_id: str,
 ) -> int:
     """Run agent. Telegram client must be DISCONNECTED so the MCP server can use the session."""
-    prompt = f"""REQUIRED: You MUST report back to the Vibe Telegram chat using the send_message MCP tool. Use entity="{dialog_id}" and message="[bot] your message". Prefix every message with "[bot]". Send progress updates, summaries, lists, findings, and completion notes — not just at the end. This is mandatory.
+    prompt = f"""REQUIRED: You MUST actually INVOKE the send_message MCP tool to report to Vibe — do NOT just describe or mention it in text. Call the tool with entity="{dialog_id}" and message="[bot] your update". Prefix every message with "[bot]". Send progress updates, summaries, findings, and completion notes. Never output instructions like "use sendMessage with dialogId..." — instead, call the tool.
 
 Execute this instruction from Vibe:
 
