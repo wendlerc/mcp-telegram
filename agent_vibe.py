@@ -73,16 +73,11 @@ async def run_agent(
     dialog_id: str,
 ) -> int:
     """Run agent. Telegram client must be DISCONNECTED so the MCP server can use the session."""
-    prompt = f"""Execute this instruction from Vibe.
+    prompt = f"""REQUIRED: You MUST report back to the Vibe Telegram chat using the send_message MCP tool. Use entity="{dialog_id}" and message="[bot] your message". Prefix every message with "[bot]". Send progress updates, summaries, lists, findings, and completion notes — not just at the end. This is mandatory.
 
-To send any result or message to the Vibe Telegram chat, use the send_message MCP tool with:
-  entity: "{dialog_id}"
-  message: "[bot] your message here"
+Execute this instruction from Vibe:
 
-Prefix every message with "[bot]" so updates are not processed as new tasks.
-Send summaries, lists, findings, and completion notes — not just at the end.
-
-Instruction: {instruction}"""
+{instruction}"""
 
     proc = await asyncio.create_subprocess_exec(
         "cursor", "agent",
