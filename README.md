@@ -2,7 +2,12 @@
 
 A TypeScript implementation of an MCP (Model Context Protocol) server for working with Telegram through MTProto, built using FastMCP. Includes a **Vibe → Cursor Agent** workflow that executes instructions from a Telegram group as headless Cursor agent tasks.
 
-**Python/uv setup:** If you don't have Node.js, see [UV_SETUP.md](UV_SETUP.md) for a Python-based setup using `uv` (no Node required). Run both `login_local.py` and `login_local.py --agent` so MCP and agent_vibe use separate sessions (avoids "database is locked"). Run `agent mcp enable telegram` so the agent can use send_message.
+**Python/uv setup:** If you don't have Node.js, see [UV_SETUP.md](UV_SETUP.md) for a Python-based setup using `uv` (no Node required). Run both `login_local.py` and `login_local.py --agent` so MCP and agent_vibe use separate sessions (avoids "database is locked"). Enable the agent to use Telegram MCP:
+
+```bash
+agent mcp enable telegram   # one-time: approve Telegram MCP for the agent
+agent mcp list             # verify: should show telegram loaded
+```
 
 ## Overview
 
@@ -64,7 +69,7 @@ node dist/index.js agent
 - `-i, --interval <seconds>` — Fetch interval (default: 3)
 - `--chat-file <file>` — File to persist shared Cursor chat ID (default: .vibe-agent-chat)
 
-**Requirements:** Cursor CLI (`cursor agent`) installed and authenticated.
+**Requirements:** Cursor CLI (`cursor agent`) installed and authenticated. For the agent to send results to Vibe, run `agent mcp enable telegram` (see [UV_SETUP.md](UV_SETUP.md)).
 
 ### Other CLI commands
 

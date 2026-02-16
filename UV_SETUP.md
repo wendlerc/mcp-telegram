@@ -58,28 +58,25 @@ This lets the agent send results to the Vibe chat via the MCP tool.
 
 ## 5. Cursor MCP config
 
-Add to Cursor → Settings → MCP → Edit Config. **Important:** `XDG_STATE_HOME` must point to the project session dir so the server finds your login:
+Use the `start-mcp.sh` wrapper so the agent reliably gets env when spawning the MCP server:
 
 ```json
 {
   "mcpServers": {
     "telegram": {
-      "command": "uv",
-      "args": ["run", "--project", "/share/datasets/home/wendler/code/mcp-telegram", "mcp-telegram", "start"],
+      "command": "/share/datasets/home/wendler/code/mcp-telegram/start-mcp.sh",
+      "args": [],
       "env": {
         "API_ID": "34785037",
         "API_HASH": "83d6e4eaef935264ea9f3c0599d254bf",
-        "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state",
-        "TMPDIR": "/share/datasets/home/wendler/code/tmp",
-        "TEMP": "/share/datasets/home/wendler/code/tmp",
-        "TMP": "/share/datasets/home/wendler/code/tmp"
+        "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state"
       }
     }
   }
 }
 ```
 
-Restart Cursor after saving.
+The wrapper sets env fallbacks so the server starts even if the agent doesn't pass them. Restart Cursor after saving.
 
 ## 6. Run Vibe→Agent in screen
 
@@ -117,6 +114,8 @@ After `agent mcp enable telegram`, the agent can use the **send_message** MCP to
 **Important:** `agent_vibe.py` disconnects from Telegram before running the agent so the MCP server can use the session. Start/Done status is sent by reconnecting briefly.
 
 ## Troubleshooting
+
+**"Connection failed" / "Tool not found"** — Use `start-mcp.sh` as the MCP command (see step 5). Restart Cursor after changing mcp.json. Run `agent mcp enable telegram` and `agent mcp list` to verify.
 
 **"database is locked"** — agent_vibe and MCP share the same SQLite session file by default. Run both logins so each has its own session:
 
