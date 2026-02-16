@@ -2,7 +2,7 @@
 
 A TypeScript implementation of an MCP (Model Context Protocol) server for working with Telegram through MTProto, built using FastMCP. Includes a **Vibe → Cursor Agent** workflow that executes instructions from a Telegram group as headless Cursor agent tasks.
 
-**Python/uv setup:** If you don't have Node.js, see [UV_SETUP.md](UV_SETUP.md) for a Python-based setup using `uv` (no Node required). Run `agent mcp enable telegram` so the agent can use send_message; agent_vibe.py disconnects before each run so the MCP can use the session.
+**Python/uv setup:** If you don't have Node.js, see [UV_SETUP.md](UV_SETUP.md) for a Python-based setup using `uv` (no Node required). Run both `login_local.py` and `login_local.py --agent` so MCP and agent_vibe use separate sessions (avoids "database is locked"). Run `agent mcp enable telegram` so the agent can use send_message.
 
 ## Overview
 
@@ -87,6 +87,8 @@ node dist/index.js logout
 - **Example:** `send_file(entity="-5150901335", file_path="/path/to/video.mp4", message="[bot] Caption")`
 - **Note:** Restart the MCP server (or Cursor) after package updates to pick up the `send_file` tool.
 
+**Reminder script (`remind_when_training_done.py`):** Polls for `model.pt` in a toy-wm experiment dir; when training finishes, sends a reminder to Vibe. Run in background: `nohup uv run python remind_when_training_done.py --run-dir blissful-ring-807 &`
+
 **CLI fallback (`send_video.py`):** When the agent is stopped and you need to send a file without MCP:
 
 ```bash
@@ -94,7 +96,7 @@ cd mcp-telegram
 uv run python send_video.py /path/to/video.mp4 "[bot] Optional caption"
 ```
 
-Stop the agent first if you get "database is locked" (session contention).
+If you get "database is locked", run `uv run python login_local.py --agent` to create a separate session for agent_vibe (see [UV_SETUP.md](UV_SETUP.md)).
 
 CLI Options for the `mcp` command:
 - `-t, --transport <type>`: Transport type (stdio, sse), defaults to 'stdio'

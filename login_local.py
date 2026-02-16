@@ -2,7 +2,12 @@
 """
 Login to Telegram using credentials from .env.
 Session is stored in project dir to avoid NFS/home path issues.
+
+Usage:
+  uv run python login_local.py              # MCP session (.session-state)
+  uv run python login_local.py --agent     # Agent session (.session-state-agent)
 """
+import argparse
 import asyncio
 import os
 import sys
@@ -12,11 +17,19 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-# Session in project dir - must match what mcp-telegram server uses
 PROJECT_DIR = Path(__file__).resolve().parent
-SESSION_DIR = PROJECT_DIR / ".session-state" / "mcp-telegram"
+parser = argparse.ArgumentParser(description="Login to Telegram")
+parser.add_argument("--agent", action="store_true", help="Create session for agent_vibe (avoids MCP lock)")
+args = parser.parse_args()
+
+if args.agent:
+    SESSION_BASE = PROJECT_DIR / ".session-state-agent"
+else:
+    SESSION_BASE = PROJECT_DIR / ".session-state"
+
+SESSION_DIR = SESSION_BASE / "mcp-telegram"
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
-os.environ["XDG_STATE_HOME"] = str(PROJECT_DIR / ".session-state")
+os.environ["XDG_STATE_HOME"] = str(SESSION_BASE)
 
 api_id = os.environ.get("TELEGRAM_API_ID") or os.environ.get("API_ID")
 api_hash = os.environ.get("TELEGRAM_API_HASH") or os.environ.get("API_HASH")

@@ -31,9 +31,10 @@ Use the local login script — reads credentials from `.env`, stores session in 
 ```bash
 cd /share/datasets/home/wendler/code/mcp-telegram
 uv run python login_local.py
+uv run python login_local.py --agent
 ```
 
-Enter only your phone number and the code from Telegram (no API ID/hash prompts).
+The first login creates the MCP session (`.session-state`). The second creates a separate agent session (`.session-state-agent`) so agent_vibe and MCP don't lock each other's SQLite session file. Enter phone + code for each.
 
 ## 4. Cursor Agent login (one-time)
 
@@ -86,10 +87,10 @@ Create a screen and run the agent there so it persists:
 
 ```bash
 screen -dmS cursor-agent
-screen -S cursor-agent -X stuff "cd /share/datasets/home/wendler/code/mcp-telegram && uv run python agent_vibe.py -w /share/datasets/home/wendler/code -d YOUR_GROUP_ID -i 1\r"
+screen -S cursor-agent -X stuff "cd /share/datasets/home/wendler/code/mcp-telegram && ./run-agent.sh\r"
 ```
 
-Replace `YOUR_GROUP_ID` with your Telegram group ID (e.g. `-5150901335`). Get it from MCP `search_dialogs` or create a group. The agent uses Composer 1.5 by default (set in `agent_vibe.py`).
+Edit `run-agent.sh` to set your group ID (e.g. `--dialog=-5150901335`). Use `--dialog=ID` (not `-d ID`) so negative IDs are parsed correctly. Get the ID from MCP `search_dialogs` or create a group. The agent uses Composer 1.5 by default (set in `agent_vibe.py`).
 
 **Attach to the screen:**
 ```bash
@@ -115,9 +116,18 @@ After `agent mcp enable telegram`, the agent can use the **send_message** MCP to
 
 **Important:** `agent_vibe.py` disconnects from Telegram before running the agent so the MCP server can use the session. Start/Done status is sent by reconnecting briefly.
 
+## Troubleshooting
+
+**"database is locked"** — agent_vibe and MCP share the same SQLite session file by default. Run both logins so each has its own session:
+
+```bash
+uv run python login_local.py
+uv run python login_local.py --agent
+```
+
 ## Summary
 
 - **Telegram MCP**: Tools in Cursor (send_message, send_file, list dialogs, etc.)
 - **Vibe→Agent**: `agent_vibe.py` polls a Telegram group and runs Cursor agent on each message
 - **Results**: Agent uses send_message (text) and send_file (files) MCP tools (run `agent mcp enable telegram` first)
-- **Session**: agent_vibe.py connects only to fetch/send, then disconnects so the MCP can use the session
+- **Sessions**: MCP uses `.session-state`, agent_vibe uses `.session-state-agent` (run both logins to avoid "database is locked")
