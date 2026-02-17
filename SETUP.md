@@ -1,48 +1,71 @@
-# Telegram MCP Server - Claude Code Setup
+# MCP Telegram — Current Setup
 
-## Quick Setup for Claude Code
+## Session Layout
 
-### 1. Get Telegram API Credentials
+Three separate Telegram sessions avoid SQLite "database is locked":
 
-1. Go to https://my.telegram.org/apps
-2. Log in with your phone number
-3. Click "Create new application"
-4. Fill in the form:
-   - Title: `MCP Server`
-   - Short name: `mcp`
-   - Platform: `Desktop`
-5. Click "Create application" and copy your `api_id` and `api_hash`
+| Session Dir | Used By | Purpose |
+|-------------|---------|---------|
+| `.session-state` | Cursor IDE MCP (`telegram`) | Composer tools (send_message, send_file) |
+| `.session-state-agent` | agent_vibe.py | Polling, Start/Done status |
+| `.session-state-agent-mcp` | Cursor Agent MCP (`telegram-agent`) | Agent send_message, send_file when running |
 
-### 2. Configure
+## MCP Config (~/.cursor/mcp.json)
 
-```bash
-cp .env.example .env
-nano .env  # Add your api_id and api_hash
+```json
+{
+  "mcpServers": {
+    "telegram": {
+      "command": "/path/to/mcp-telegram/start-mcp.sh",
+      "args": [],
+      "env": {
+        "API_ID": "...",
+        "API_HASH": "...",
+        "XDG_STATE_HOME": "/path/to/mcp-telegram/.session-state"
+      }
+    },
+    "telegram-agent": {
+      "command": "/path/to/mcp-telegram/start-mcp-agent.sh",
+      "args": [],
+      "env": {
+        "API_ID": "...",
+        "API_HASH": "...",
+        "XDG_STATE_HOME": "/path/to/mcp-telegram/.session-state-agent-mcp"
+      }
+    }
+  }
+}
 ```
 
-### 3. Sign In (One-Time)
+- **telegram**: Cursor IDE Composer
+- **telegram-agent**: Cursor Agent (run `agent mcp enable telegram-agent`)
+
+## Login (one-time)
 
 ```bash
-npm run sign-in
+uv run python login_local.py              # .session-state (IDE MCP)
+uv run python login_local.py --agent      # .session-state-agent (agent_vibe)
+uv run python login_local.py --agent-mcp  # .session-state-agent-mcp (Agent MCP)
 ```
 
-Enter your phone number and confirmation code when prompted.
+## Sending to Vibe
 
-### 4. Install to Claude Code
+- **MCP tools**: `send_message(entity="-5150901335", message="[bot] ...")`, `send_file(entity, file_path, message)`
+- **Fallback**: `echo "[bot] msg" >> .vibe-send-queue` (agent_vibe forwards after agent finishes)
+- **CLI**: `uv run python send_video.py /path/to/file "[bot] caption"` — requires session free (stop agent_vibe first, or use `XDG_STATE_HOME=.session-state-agent-mcp`)
+
+## Vibe→Agent Flow
+
+1. agent_vibe polls Telegram group
+2. On new message: sends "Starting...", runs `cursor agent` with instruction
+3. Agent uses telegram-agent MCP (send_message, send_file) or .vibe-send-queue
+4. agent_vibe forwards queue, sends "Done ✓"
+
+## Push to GitHub
+
+SSH key needs passphrase. Run manually:
 
 ```bash
-claude mcp add --scope user --transport stdio telegram -- \
-  node /Users/gsarti/Documents/projects/mcps/mcp-telegram/dist/index.js
-```
-
-### 5. Verify
-
-Ask Claude:
-- "List my Telegram chats"
-- "Show recent messages"
-
-## Uninstall
-
-```bash
-claude mcp remove telegram
+ssh-add ~/.ssh/id_ed25519   # enter passphrase when prompted
+cd mcp-telegram && git push origin main
 ```
