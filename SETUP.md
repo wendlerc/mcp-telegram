@@ -63,9 +63,15 @@ uv run python login_local.py --agent-mcp  # .session-state-agent-mcp (Agent MCP)
 
 ## Push to GitHub
 
-SSH key needs passphrase. Run manually:
+SSH key needs passphrase. When `/tmp` is full, use `ssh-agent -a` to put the socket elsewhere:
 
 ```bash
+# Workaround when /tmp has no space
+AGENT_DIR=/path/to/code/tmp/ssh-agent-push
+mkdir -p "$AGENT_DIR"
+eval $(ssh-agent -s -a "$AGENT_DIR/agent")
 ssh-add ~/.ssh/id_ed25519   # enter passphrase when prompted
 cd mcp-telegram && git push origin main
 ```
+
+Or use `./push.sh` (prompts for passphrase).
