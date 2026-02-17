@@ -48,10 +48,16 @@ Follow the prompts (browser or token). Run `agent status` to verify.
 
 ## 4b. Enable Telegram MCP for agent (one-time)
 
-The agent needs the Telegram MCP approved to use send_message:
+The agent needs the Telegram MCP approved to use send_message. Use `telegram-agent` (separate session) to avoid "database is locked" when Cursor IDE also has MCP running:
 
 ```bash
-agent mcp enable telegram
+# Create agent MCP session (one-time; enter phone + code)
+uv run python login_local.py --agent-mcp
+
+# Switch agent to telegram-agent (uses .session-state-agent-mcp)
+agent mcp disable telegram
+agent mcp enable telegram-agent
+agent mcp list   # Should show: telegram-agent: ready
 ```
 
 This lets the agent send results to the Vibe chat via the MCP tool.
@@ -71,10 +77,21 @@ Use the `start-mcp.sh` wrapper so the agent reliably gets env when spawning the 
         "API_HASH": "83d6e4eaef935264ea9f3c0599d254bf",
         "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state"
       }
+    },
+    "telegram-agent": {
+      "command": "/share/datasets/home/wendler/code/mcp-telegram/start-mcp-agent.sh",
+      "args": [],
+      "env": {
+        "API_ID": "34785037",
+        "API_HASH": "83d6e4eaef935264ea9f3c0599d254bf",
+        "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state-agent-mcp"
+      }
     }
   }
 }
 ```
+
+Use `telegram` for Cursor IDE Composer, `telegram-agent` for the agent (run `agent mcp enable telegram-agent`).
 
 The wrapper sets env fallbacks so the server starts even if the agent doesn't pass them. Restart Cursor after saving.
 

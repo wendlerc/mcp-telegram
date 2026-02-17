@@ -4,8 +4,9 @@ Login to Telegram using credentials from .env.
 Session is stored in project dir to avoid NFS/home path issues.
 
 Usage:
-  uv run python login_local.py              # MCP session (.session-state)
-  uv run python login_local.py --agent     # Agent session (.session-state-agent)
+  uv run python login_local.py              # MCP session for Cursor IDE (.session-state)
+  uv run python login_local.py --agent     # Agent session for agent_vibe (.session-state-agent)
+  uv run python login_local.py --agent-mcp # MCP session for Cursor agent (.session-state-agent-mcp)
 """
 import argparse
 import asyncio
@@ -20,9 +21,12 @@ load_dotenv()
 PROJECT_DIR = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description="Login to Telegram")
 parser.add_argument("--agent", action="store_true", help="Create session for agent_vibe (avoids MCP lock)")
+parser.add_argument("--agent-mcp", action="store_true", help="Create session for Cursor agent MCP (avoids IDE MCP lock)")
 args = parser.parse_args()
 
-if args.agent:
+if args.agent_mcp:
+    SESSION_BASE = PROJECT_DIR / ".session-state-agent-mcp"
+elif args.agent:
     SESSION_BASE = PROJECT_DIR / ".session-state-agent"
 else:
     SESSION_BASE = PROJECT_DIR / ".session-state"
