@@ -117,6 +117,8 @@ After `agent mcp enable telegram`, the agent can use the **send_message** MCP to
 
 **"Connection failed" / "Tool not found"** — Use `start-mcp.sh` as the MCP command (see step 5). Restart Cursor after changing mcp.json. Run `agent mcp enable telegram` and `agent mcp list` to verify.
 
+**"MCP disconnected"** — The `start-mcp.sh` wrapper runs `run_mcp_reconnect.py`, which reconnects automatically when the Telegram connection drops during long agent runs.
+
 **"database is locked"** — agent_vibe and MCP share the same SQLite session file by default. Run both logins so each has its own session:
 
 ```bash

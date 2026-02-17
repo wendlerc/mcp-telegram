@@ -66,6 +66,13 @@ def get_or_create_chat_id(workspace: Path, chat_file: str) -> str:
     return chat_id
 
 
+def run_agent_env(workspace: Path) -> dict:
+    """Env for agent: VIBE_SEND_QUEUE path for file fallback when MCP times out."""
+    e = env.copy()
+    e["VIBE_SEND_QUEUE"] = str(workspace / ".vibe-send-queue")
+    return e
+
+
 async def run_agent(
     instruction: str,
     workspace: Path,
@@ -73,7 +80,12 @@ async def run_agent(
     dialog_id: str,
 ) -> int:
     """Run agent. Telegram client must be DISCONNECTED so the MCP server can use the session."""
-    prompt = f"""REQUIRED: You MUST actually INVOKE the send_message MCP tool to report to Vibe — do NOT just describe or mention it in text. Call the tool with entity="{dialog_id}" and message="[bot] your update". Prefix every message with "[bot]". Send progress updates, summaries, findings, and completion notes. Never output instructions like "use sendMessage with dialogId..." — instead, call the tool.
+    queue_path = workspace / ".vibe-send-queue"
+    queue_path.write_text("")  # Clear before run
+
+    prompt = f"""REQUIRED: Report back to Vibe. Try the send_message MCP tool first. If it returns "Tool not found" or times out, use this fallback instead:
+  echo "[bot] your message" >> .vibe-send-queue
+Prefix every message with "[bot]". Send progress updates, summaries, findings, and completion notes. agent_vibe forwards .vibe-send-queue to Telegram after you finish.
 
 Execute this instruction from Vibe:
 
@@ -92,7 +104,7 @@ Execute this instruction from Vibe:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         cwd=workspace,
-        env=env,
+        env=run_agent_env(workspace),
     )
     assert proc.stdout is not None
     async for line in proc.stdout:
@@ -229,6 +241,17 @@ async def main():
             await connect_send_disconnect(entity, f"{BOT_PREFIX} Starting...")
             code = await run_agent(merged, workspace, chat_id, args.dialog)
             await asyncio.sleep(DB_LOCK_DELAY * 2)  # Extra wait for MCP to release session
+            # Forward queued messages (agent used echo >> .vibe-send-queue when MCP failed)
+            queue_path = workspace / ".vibe-send-queue"
+            if queue_path.exists():
+                lines = [l.strip() for l in queue_path.read_text().splitlines() if l.strip()]
+                for line in lines:
+                    try:
+                        msg = line if line.startswith(BOT_PREFIX) else f"{BOT_PREFIX} {line}"
+                        await connect_send_disconnect(entity, msg)
+                    except Exception as e:
+                        print(f"Failed to send queued message: {e}", file=sys.stderr)
+                queue_path.write_text("")
             status = f"{BOT_PREFIX} Done ✓" if code == 0 else f"{BOT_PREFIX} Error (exit {code})"
             await connect_send_disconnect(entity, status)
             print(f"\n✓ Agent finished (exit {code})\n")

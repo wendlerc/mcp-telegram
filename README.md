@@ -2,12 +2,46 @@
 
 A TypeScript implementation of an MCP (Model Context Protocol) server for working with Telegram through MTProto, built using FastMCP. Includes a **Vibe → Cursor Agent** workflow that executes instructions from a Telegram group as headless Cursor agent tasks.
 
-**Python/uv setup:** If you don't have Node.js, see [UV_SETUP.md](UV_SETUP.md) for a Python-based setup using `uv` (no Node required). Run both `login_local.py` and `login_local.py --agent` so MCP and agent_vibe use separate sessions (avoids "database is locked"). Enable the agent to use Telegram MCP:
+## Quick start (Python — everything just works)
+
+Use the Python setup so the agent can send messages and files to Telegram. Full details in [UV_SETUP.md](UV_SETUP.md).
 
 ```bash
-agent mcp enable telegram   # one-time: approve Telegram MCP for the agent
-agent mcp list             # verify: should show telegram loaded
+# 1. Install
+cd mcp-telegram && uv sync
+
+# 2. Login (one-time) — run BOTH so MCP and agent use separate sessions
+uv run python login_local.py
+uv run python login_local.py --agent
+
+# 4. Enable MCP for agent (one-time)
+agent mcp enable telegram
+
+# 5. Start Vibe→Agent in screen
+screen -dmS cursor-agent
+screen -S cursor-agent -X stuff "cd /share/datasets/home/wendler/code/mcp-telegram && ./run-agent.sh\r"
+# Attach: screen -r cursor-agent. Detach: Ctrl+A D.
 ```
+
+# 3. Cursor MCP config — add to ~/.cursor/mcp.json (restart Cursor after)
+
+```json
+{
+  "mcpServers": {
+    "telegram": {
+      "command": "/share/datasets/home/wendler/code/mcp-telegram/start-mcp.sh",
+      "args": [],
+      "env": {
+        "API_ID": "34785037",
+        "API_HASH": "83d6e4eaef935264ea9f3c0599d254bf",
+        "XDG_STATE_HOME": "/share/datasets/home/wendler/code/mcp-telegram/.session-state"
+      }
+    }
+  }
+}
+```
+
+Edit `run-agent.sh` to set `--dialog=YOUR_GROUP_ID` (e.g. `-5150901335`). Restart Cursor after changing mcp.json.
 
 ## Overview
 
