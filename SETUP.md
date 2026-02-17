@@ -54,12 +54,49 @@ uv run python login_local.py --agent-mcp  # .session-state-agent-mcp (Agent MCP)
 - **Fallback**: `echo "[bot] msg" >> .vibe-send-queue` (agent_vibe forwards after agent finishes)
 - **CLI**: `uv run python send_video.py /path/to/file "[bot] caption"` — requires session free (stop agent_vibe first, or use `XDG_STATE_HOME=.session-state-agent-mcp`)
 
+## agent_vibe options
+
+- `-d, --dialog` — Group ID (default: -5150901335)
+- `--chat-file` — Cursor chat persistence (default: .vibe-agent-chat)
+- `--queue` — Fallback queue file when MCP fails (default: .vibe-send-queue)
+- `-w, --workspace` — Agent workspace
+
+The prompt includes the dialog entity ID so the agent reports to the correct group (fixes second-agent reporting to wrong group).
+
 ## Vibe→Agent Flow
 
 1. agent_vibe polls Telegram group
 2. On new message: sends "Starting...", runs `cursor agent` with instruction
 3. Agent uses telegram-agent MCP (send_message, send_file) or .vibe-send-queue
 4. agent_vibe forwards queue, sends "Done ✓"
+
+## Second Agent (e.g. Doom)
+
+Run a second agent for another group with its own context:
+
+```bash
+# 1. Get group ID: uv run python list_dialogs.py (stop agent_vibe first if "database is locked")
+# 2. Edit run-agent-doom.sh: DOOM_GROUP_ID or set env
+# 3. screen -dmS cursor-agent-doom ./run-agent-doom.sh
+```
+
+Each agent uses `--dialog`, `--chat-file`, `--queue` so they have separate chats and send queues. The prompt includes the entity ID so the agent reports to the correct group.
+
+## list_dialogs.py
+
+Find group IDs when @userinfobot doesn't work:
+
+```bash
+uv run python list_dialogs.py   # stop agent_vibe first if "database is locked"
+```
+
+## End-to-end setup
+
+```bash
+./setup_end2end.sh
+```
+
+Guides through install, login, MCP config, and run-agent.
 
 ## Push to GitHub
 

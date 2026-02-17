@@ -6,6 +6,8 @@ A TypeScript implementation of an MCP (Model Context Protocol) server for workin
 
 Use the Python setup so the agent can send messages and files to Telegram. Full details in [UV_SETUP.md](UV_SETUP.md). Current setup doc: [SETUP.md](SETUP.md).
 
+**End-to-end setup:** `./setup_end2end.sh` — guides through install, login, MCP config, run-agent.
+
 ```bash
 # 1. Install
 cd mcp-telegram && uv sync
@@ -23,6 +25,10 @@ agent mcp enable telegram-agent
 screen -dmS cursor-agent
 screen -S cursor-agent -X stuff "cd /path/to/mcp-telegram && ./run-agent.sh\r"
 # Attach: screen -r cursor-agent. Detach: Ctrl+A D.
+
+# Optional: Second agent for another group
+# uv run python list_dialogs.py   # get group ID (stop agent_vibe first if locked)
+# Edit run-agent-doom.sh, then: screen -dmS cursor-agent-doom ./run-agent-doom.sh
 ```
 
 # 5. Cursor MCP config — add to ~/.cursor/mcp.json (restart Cursor after)

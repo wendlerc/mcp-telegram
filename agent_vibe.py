@@ -66,10 +66,10 @@ def get_or_create_chat_id(workspace: Path, chat_file: str) -> str:
     return chat_id
 
 
-def run_agent_env(workspace: Path) -> dict:
+def run_agent_env(workspace: Path, queue_path: Path) -> dict:
     """Env for agent: VIBE_SEND_QUEUE path for file fallback when MCP times out."""
     e = env.copy()
-    e["VIBE_SEND_QUEUE"] = str(workspace / ".vibe-send-queue")
+    e["VIBE_SEND_QUEUE"] = str(queue_path)
     return e
 
 
@@ -78,16 +78,17 @@ async def run_agent(
     workspace: Path,
     chat_id: str,
     dialog_id: str,
+    queue_path: Path,
 ) -> int:
     """Run agent. Telegram client must be DISCONNECTED so the MCP server can use the session."""
-    queue_path = workspace / ".vibe-send-queue"
     queue_path.write_text("")  # Clear before run
+    queue_name = queue_path.name
 
-    prompt = f"""REQUIRED: Report back to Vibe. Try the send_message MCP tool first. If it returns "Tool not found" or times out, use this fallback instead:
-  echo "[bot] your message" >> .vibe-send-queue
-Prefix every message with "[bot]". Send progress updates, summaries, findings, and completion notes. agent_vibe forwards .vibe-send-queue to Telegram after you finish.
+    prompt = f"""REQUIRED: Report back to this group. Use send_message MCP tool with entity="{dialog_id}" (always use this entity, not Vibe). If it returns "Tool not found" or times out, use this fallback instead:
+  echo "[bot] your message" >> {queue_name}
+Prefix every message with "[bot]". Send progress updates, summaries, findings, and completion notes. agent_vibe forwards {queue_name} to Telegram after you finish.
 
-Execute this instruction from Vibe:
+Execute this instruction:
 
 {instruction}"""
 
@@ -104,7 +105,7 @@ Execute this instruction from Vibe:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         cwd=workspace,
-        env=run_agent_env(workspace),
+        env=run_agent_env(workspace, queue_path),
     )
     assert proc.stdout is not None
     async for line in proc.stdout:
@@ -118,10 +119,12 @@ async def main():
     parser.add_argument("-d", "--dialog", default="-5150901335", help="Vibe group ID")
     parser.add_argument("-w", "--workspace", default="/share/datasets/home/wendler/code", help="Workspace for agent")
     parser.add_argument("--chat-file", default=".vibe-agent-chat", help="File to persist chat ID")
+    parser.add_argument("--queue", default=".vibe-send-queue", help="Queue file for fallback when MCP fails")
     parser.add_argument("-i", "--interval", type=int, default=1, help="Poll interval (seconds)")
     args = parser.parse_args()
 
     workspace = Path(args.workspace).resolve()
+    queue_path = workspace / args.queue
     chat_id = get_or_create_chat_id(workspace, args.chat_file)
 
     from mcp_telegram.telegram import Telegram
@@ -239,10 +242,9 @@ async def main():
         print(f"\n📩 Processing: {preview}\n")
         try:
             await connect_send_disconnect(entity, f"{BOT_PREFIX} Starting...")
-            code = await run_agent(merged, workspace, chat_id, args.dialog)
+            code = await run_agent(merged, workspace, chat_id, args.dialog, queue_path)
             await asyncio.sleep(DB_LOCK_DELAY * 2)  # Extra wait for MCP to release session
-            # Forward queued messages (agent used echo >> .vibe-send-queue when MCP failed)
-            queue_path = workspace / ".vibe-send-queue"
+            # Forward queued messages (agent used echo >> queue when MCP failed)
             if queue_path.exists():
                 lines = [l.strip() for l in queue_path.read_text().splitlines() if l.strip()]
                 for line in lines:

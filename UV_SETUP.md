@@ -115,11 +115,12 @@ screen -r cursor-agent
 
 **Stop the agent:** Attach to screen, then `Ctrl+C`
 
+**Second agent (e.g. Doom):** Use `run-agent-doom.sh` with `--dialog`, `--chat-file`, `--queue` for a separate group. Each agent reports to its own group (entity ID is in the prompt). See SETUP.md.
+
 ## Getting your group ID
 
+- **list_dialogs.py**: `uv run python list_dialogs.py` — lists all groups with IDs (stop agent_vibe first if "database is locked")
 - **MCP**: Ask Cursor to search your dialogs (e.g. "search my Telegram dialogs for X")
-- **CLI**: `uv run mcp-telegram tools` then use `search_dialogs`
-- **Create group**: `uv run mcp-telegram create-group "My Vibe Group"` — ID is printed
 - **Bots**: Add [@userinfobot](https://t.me/userinfobot) to the group; it replies with the group ID
 
 ## Sending results to Telegram (MCP)
