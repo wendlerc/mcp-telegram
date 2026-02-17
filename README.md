@@ -6,7 +6,7 @@ A TypeScript implementation of an MCP (Model Context Protocol) server for workin
 
 Use the Python setup so the agent can send messages and files to Telegram. Full details in [UV_SETUP.md](UV_SETUP.md). Current setup doc: [SETUP.md](SETUP.md).
 
-**End-to-end setup:** `./setup_end2end.sh` — guides through install, login, MCP config, run-agent.
+**End-to-end setup:** `./setup.sh` — guides through install, login, MCP config, run-agent.
 
 ```bash
 # 1. Install

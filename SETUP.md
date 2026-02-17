@@ -93,7 +93,7 @@ uv run python list_dialogs.py   # stop agent_vibe first if "database is locked"
 ## End-to-end setup
 
 ```bash
-./setup_end2end.sh
+./setup.sh
 ```
 
 Guides through install, login, MCP config, and run-agent.
