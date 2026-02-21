@@ -61,9 +61,8 @@ if local_bin.exists():
 path_parts.append(env.get("PATH", ""))
 env["PATH"] = ":".join(path_parts)
 
-# Ensure GEMINI_API_KEY is in env (loaded from .env by dotenv above)
-if os.environ.get("GEMINI_API_KEY"):
-    env["GEMINI_API_KEY"] = os.environ["GEMINI_API_KEY"]
+# Use Google Login auth (uses paid subscription, not free-tier API key)
+env["GOOGLE_GENAI_USE_GCA"] = "true"
 
 BOT_PREFIX = "[bot]"
 BOT_PATTERNS = ("Starting:", "Done ✓", "Yes —", "New approach:", "Update:")
@@ -184,13 +183,32 @@ async def main():
     parser.add_argument("-w", "--workspace", default="/share/datasets/home/wendler/code", help="Workspace for agent")
     parser.add_argument("--queue", default=".vibe-send-queue", help="Queue file for fallback when MCP fails")
     parser.add_argument("-i", "--interval", type=int, default=1, help="Poll interval (seconds)")
-    parser.add_argument("--no-resume", action="store_true", help="Don't resume previous session")
+    parser.add_argument("--resume", action="store_true", default=None,
+                        help="Resume last Gemini session (skip prompt)")
+    parser.add_argument("--no-resume", action="store_true",
+                        help="Start fresh session (skip prompt)")
     args = parser.parse_args()
 
     workspace = Path(args.workspace).resolve()
     queue_path = workspace / args.queue
-    use_resume = not args.no_resume
-    task_count = 0  # Track whether we have a session to resume
+
+    # Ask whether to resume last session
+    if args.resume:
+        resume_session = True
+    elif args.no_resume:
+        resume_session = False
+    else:
+        try:
+            answer = input("\n🔄 Resume last Gemini session? [y/N]: ").strip().lower()
+            resume_session = answer in ("y", "yes")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            sys.exit(0)
+
+    if resume_session:
+        print("  ↳ Will resume last session\n")
+    else:
+        print("  ↳ Starting fresh session\n")
 
     from mcp_telegram.telegram import Telegram
 
@@ -296,7 +314,7 @@ async def main():
     entity = int(args.dialog) if args.dialog.lstrip("-").isdigit() else args.dialog
 
     async def process_queue():
-        nonlocal processing, task_count
+        nonlocal processing, resume_session
         if processing or not queue:
             return
         processing = True
@@ -311,9 +329,9 @@ async def main():
         print(f"\n📩 Processing: {preview}\n")
         try:
             await connect_send_disconnect(entity, f"{BOT_PREFIX} Starting...")
-            should_resume = use_resume and task_count > 0
-            code = await run_agent(merged, workspace, args.dialog, queue_path, resume=should_resume)
-            task_count += 1
+            code = await run_agent(merged, workspace, args.dialog, queue_path, resume=resume_session)
+            # After the first task, always resume (keep session continuity)
+            resume_session = True
             await asyncio.sleep(DB_LOCK_DELAY * 2)  # Extra wait for MCP to release session
             # Forward queued messages (agent used echo >> queue when MCP failed)
             if queue_path.exists():
