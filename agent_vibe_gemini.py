@@ -363,7 +363,7 @@ async def main():
     print("Vibe → Gemini Agent")
     print(f"Dialog: {args.dialog}")
     print(f"Workspace: {workspace}")
-    print(f"Resume sessions: {use_resume}")
+    print(f"Resume sessions: {resume_session}")
     print(f"Fetching every {args.interval}s. Press Ctrl+C to stop.\n")
 
     while True:
